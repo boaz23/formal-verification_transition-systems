@@ -38,6 +38,8 @@ class DfsVertexState:
 def dfs_find_one(graph, predicate, max_depth = None):
     dfs_stack = []
     vertices_states = {}
+    reached_max_depth = False
+    found_vertex = None
 
     for s in graph.start_vertices():
         dfs_stack.append(DfsPathState(s, iter(graph.neighbors_of(s)), 0))
@@ -46,17 +48,20 @@ def dfs_find_one(graph, predicate, max_depth = None):
         path_state = dfs_stack.pop()
         v_current = path_state.v
 
-        if max_depth is not None and path_state.depth > max_depth:
-            continue
-        print(f"{v_current}, {path_state.depth}")
+        # print(f"{v_current}, {path_state.depth}")
         if predicate(v_current):
-            return v_current
+            found_vertex = v_current
+            break
         vertices_states[v_current] = DfsVertexState(v_current)
+
+        if max_depth is not None and path_state.depth == max_depth:
+            reached_max_depth = True
+            continue
 
         try:
             v_next = next(path_state.neighbors_iter)
             dfs_stack.append(path_state)
-            print(f"{v_current} -> {v_next}")
+            # print(f"{v_current} -> {v_next}")
             if v_next in vertices_states:
                 continue
             dfs_stack.append(DfsPathState(v_next, iter(graph.neighbors_of(v_next)), path_state.depth + 1))
@@ -64,12 +69,25 @@ def dfs_find_one(graph, predicate, max_depth = None):
             # we're done with this vertex
             pass
 
-    return None
+    return found_vertex, reached_max_depth
 
+
+def dfid_find_one(graph, predicate):
+    max_depth = 0
+    result = None
+    while True:
+        # print(f"dfs run, max depth = {max_depth}")
+        v, reached_max_depth = dfs_find_one(graph, predicate, max_depth=max_depth)
+        if v is not None:
+            result = v
+            break
+        if not reached_max_depth:
+            break
+        max_depth = max_depth + 1
+    return result
 
 def property0(ts):
     pass
-
 
 def test_graph():
     TS = {
@@ -88,7 +106,7 @@ def test_graph():
         print(f"E({v}) -> {tsgraph.neighbors_of(v)}")
 
     print()
-    dfs_find_one(tsgraph, lambda x: False)
+    print(f"found: {dfid_find_one(tsgraph, lambda x: 'q' in TS['L'](x))}")
 
 
 if __name__ == '__main__':
