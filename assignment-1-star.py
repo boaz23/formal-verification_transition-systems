@@ -86,8 +86,20 @@ def dfid_find_one(graph, predicate):
         max_depth = max_depth + 1
     return result
 
+
 def property0(ts):
+    l_func = ts["L"]
+    return dfid_find_one(TSGraph(ts), lambda s: {"crit1", "crit2"}.issubset(l_func(s))) is not None
+
+
+def property1(ts):
+    l_func = ts["L"]
+    return dfid_find_one(TSGraph(ts), lambda s: {"even", "prime"}.issubset(l_func(s))) is None
+
+
+def property2(ts):
     pass
+
 
 def test_graph():
     TS = {
