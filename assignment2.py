@@ -38,13 +38,15 @@ class TransitionSystemFromLogicCircuitConvertor:
         self._initAp()
 
     def convert(self):
+        self._convert_allStartStates()
+        return self._buildTransitionSystem()
+
+    def _convert_allStartStates(self):
         for startState in self.states_start:
             if startState in self.stateLabelsMap:
                 continue
 
             self._convert_fromStartState(startState)
-
-        return self._buildTransitionSystem()
 
     def _buildTransitionSystem(self):
         return {
@@ -63,7 +65,7 @@ class TransitionSystemFromLogicCircuitConvertor:
         return L
 
     def _convert_fromStartState(self, startState):
-        statesLeftStack = []
+        statesLeftStack = [startState]
         while len(statesLeftStack) > 0:
             state = statesLeftStack.pop()
 
