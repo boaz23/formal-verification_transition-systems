@@ -127,14 +127,6 @@ def transitionSystemFromCircuit(*args):
 
 
 def main():
-    convertor = TransitionSystemFromLogicCircuitConvertor(LogicCircuit(
-        numberOfInputs=2,
-        numberOfRegisters=3,
-        numberOfOutputs=2,
-        updateRegisters=None,
-        computeOutputs=None,
-    ))
-    # print(sorted(list(convertor.states_start)))
     pass
 
 
