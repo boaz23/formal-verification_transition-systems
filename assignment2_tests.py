@@ -1,25 +1,5 @@
+from ts_tests_core import *
 import assignment2
-import copy
-import pprint
-
-
-def printableTs(ts):
-    ts = copy.deepcopy(ts)
-    ts['AP'] = sorted(list(ts['AP']))
-    for s in ts['S']:
-        ts['L'][s] = sorted(list(ts['L'][s]))
-    return ts
-
-
-def printTs(ts):
-    pprint.pprint(printableTs(ts))
-
-
-def convertLabelsFuncToMap(L, states):
-    lmap = {}
-    for s in states:
-        lmap[s] = L(s)
-    return lmap
 
 
 def convertCircuit(*args):
@@ -52,8 +32,38 @@ def test1():
 
     assert ts == expected
 
+
+def test2():
+    ts = convertCircuit(1, 1, 1, lambda s: (not (s[1] or s[0]),), lambda s: (s[1] ^ s[0],))
+    expected = {
+        'AP': {'r1', 'x1', 'y1'},
+        'Act': {(False,), (True,)},
+        'I': {(False, True), (False, False)},
+        'L': {
+            (False, False): set(),
+            (False, True): {'x1', 'y1'},
+            (True, False): {'r1', 'y1'},
+            (True, True): {'r1', 'x1'}
+        },
+        'S': {(False, True), (True, False), (True, True), (False, False)},
+        'to': {
+            ((False, False), (False,), (True, False)),
+            ((False, False), (True,), (True, True)),
+            ((False, True), (False,), (False, False)),
+            ((False, True), (True,), (False, True)),
+            ((True, False), (False,), (False, False)),
+            ((True, False), (True,), (False, True)),
+            ((True, True), (False,), (False, False)),
+            ((True, True), (True,), (False, True))
+        }
+    }
+
+    assert ts == expected
+
+
 def runTests():
     test1()
+    test2()
 
 
 if __name__ == '__main__':
