@@ -105,14 +105,16 @@ class TransitionSystemFromLogicCircuitConvertor:
             self.to.add((state, act, followingState,))
             if followingState not in self.stateLabelsMap:
                 statesLeftStack.append(followingState)
+                self.stateLabelsMap[followingState] = None
 
     def _initFromAllInputValues(self):
-        self._registerZerosList = [False] * self.logicCircuit.registersAmount
+        self._registerAllZeros = (False,) * self.logicCircuit.registersAmount
         AllInputValuesEnumerator(self.logicCircuit.inputsAmount, self._onInputValue).enumerate()
 
     def _onInputValue(self, inputValue):
-        self.states_start.add(tuple(self._registerZerosList + inputValue))
-        self.act.add(tuple(inputValue))
+        inputValue = tuple(inputValue)
+        self.states_start.add(self._registerAllZeros + inputValue)
+        self.act.add(inputValue)
 
     def _initAp(self):
         self._appendApSymbols(self.logicCircuit.registersAmount, 'r')
