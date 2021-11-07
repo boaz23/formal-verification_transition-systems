@@ -35,17 +35,113 @@ class DfsVertexState:
         self.v = v
 
 
+class DfsRun:
+    def __init__(self, graph, max_depth = None):
+        self.graph = graph
+        self.max_depth = max_depth
+
+        self.stack = []
+        self.vertices_states = {}
+        self.reached_max_depth = False
+        self.found_vertex = None
+        self.result = None
+        self._add_start_vertices()
+
+    def end_run(self):
+        raise StopIteration
+
+    def get_result(self):
+        return self.result
+    def set_result(self, result):
+        self.result = result
+
+    def on_visit_start(self, v):
+        pass
+
+    def on_back_edge(self, u, v):
+        pass
+
+    def __next__(self):
+        if len(self.stack) == 0:
+            self.end_run()
+
+        path_state = self.stack.pop()
+        v_current = path_state.v
+
+        # print(f"{v_current}, {path_state.depth}")
+        if v_current in self.vertices_states:
+            continue
+        else:
+            self.vertices_states[v_current] = DfsVertexState(v_current)
+
+
+    def _run_loop(self):
+        while len(self.stack) > 0:
+            path_state = self.stack.pop()
+            v_current = path_state.v
+
+            # print(f"{v_current}, {path_state.depth}")
+            if v_current in self.vertices_states:
+                continue
+            else:
+                self.vertices_states[v_current] = DfsVertexState(v_current)
+
+            self.on_visit_start(v_current)
+            if self.should_end_run:
+                break
+
+            if self.max_depth is not None and path_state.depth == self.max_depth:
+                reached_max_depth = True
+                continue
+
+            try:
+                v_next = next(path_state.neighbors_iter)
+                self.stack.append(path_state)
+                # print(f"{v_current} -> {v_next}")
+                if v_next in self.vertices_states:
+                    continue
+                # stack.append(DfsPathState(v_next, iter(graph.neighbors_of(v_next)), path_state.depth + 1))
+            except StopIteration:
+                # we're done with this vertex
+                pass
+
+    def _add_start_vertices(self):
+        for s in self.graph.start_vertices():
+            self.stack.append(DfsPathState(s, iter(self.graph.neighbors_of(s)), 0))
+
+
+class Dfs:
+    def __init__(self, graph, max_depth = None):
+        self.graph = graph
+        self.max_depth = max_depth
+
+    def run_iter(self):
+        return DfsRun(self.graph, self.max_depth)
+
+    def run(self):
+        dfsRun = self.run_iter()
+        while True:
+            try:
+                current = next(dfsRun)
+            except StopIteration:
+                break
+        return dfsRun.get_result()
+
+    def __iter__(self):
+        return self.run_iter()
+
+
 def dfs_find_one(graph, predicate, max_depth = None):
-    dfs_stack = []
+    stack = []
     vertices_states = {}
     reached_max_depth = False
     found_vertex = None
 
     for s in graph.start_vertices():
-        dfs_stack.append(DfsPathState(s, iter(graph.neighbors_of(s)), 0))
+        stack.append(DfsPathState(s, iter(graph.neighbors_of(s)), 0))
 
-    while len(dfs_stack) > 0:
-        path_state = dfs_stack.pop()
+    while len(stack) > 0:
+        path_state = stack.pop()
         v_current = path_state.v
 
         # print(f"{v_current}, {path_state.depth}")
@@ -60,11 +156,11 @@ def dfs_find_one(graph, predicate, max_depth = None):
 
         try:
             v_next = next(path_state.neighbors_iter)
-            dfs_stack.append(path_state)
+            stack.append(path_state)
             # print(f"{v_current} -> {v_next}")
             if v_next in vertices_states:
                 continue
-            dfs_stack.append(DfsPathState(v_next, iter(graph.neighbors_of(v_next)), path_state.depth + 1))
+            stack.append(DfsPathState(v_next, iter(graph.neighbors_of(v_next)), path_state.depth + 1))
         except StopIteration:
             # we're done with this vertex
             pass
@@ -122,4 +218,5 @@ def test_graph():
 
 
 if __name__ == '__main__':
-    test_graph()
+    # test_graph()
+    pass
