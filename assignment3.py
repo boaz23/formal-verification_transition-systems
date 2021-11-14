@@ -1,5 +1,3 @@
-import pprint
-
 class Stack:
     def __init__(self, iterable=None):
         if iterable is None:
