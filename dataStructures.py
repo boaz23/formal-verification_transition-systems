@@ -17,9 +17,6 @@ class Stack:
     def isEmpty(self):
         return len(self.stack) == 0
 
-    def hasItems(self):
-        return len(self.stack) > 0
-
     def clone_shallow(self):
         return Stack(self.stack)
 

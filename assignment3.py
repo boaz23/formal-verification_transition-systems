@@ -17,9 +17,6 @@ class Stack:
     def isEmpty(self):
         return len(self.stack) == 0
 
-    def hasItems(self):
-        return len(self.stack) > 0
-
     def clone_shallow(self):
         return Stack(self.stack)
 
@@ -94,7 +91,7 @@ class AllStartValuesIterator:
             raise StopIteration
 
         retNext = self._buildNext()
-        while self.stateStack.hasItems():
+        while not self.stateStack.isEmpty():
             varState = self.stateStack.pop()
             try:
                 self._nextVarState(varState)
@@ -144,6 +141,14 @@ class ProgramGraph:
         self.to = pgDict['to']
         self.g0 = pgDict['g0']
 
+    def postTransitions(self, loc):
+        result = set()
+        for transition in self.to:
+            loc_from, cond, act, loc_to = transition
+            if loc_from == loc:
+                result.add(transition)
+        return result
+
 class TransitionSystemFromProgramGraphConvertor:
     def __init__(self, programGraph, varDescriptors, conditionLabels):
         self.programGraph = programGraph
@@ -156,10 +161,10 @@ class TransitionSystemFromProgramGraphConvertor:
         self.to = set()
         self.ap = set()
 
-    def convert(self):
+    def convert(self, labelsIsMap=False):
         self._initConvert()
         self._convert_fromAllStartStates()
-        return self._buildTransitionSystem()
+        return self._buildTransitionSystem(labelsIsMap)
 
     def _convert_fromAllStartStates(self):
         for startState in self.states_start:
@@ -168,14 +173,14 @@ class TransitionSystemFromProgramGraphConvertor:
 
             self._convert_fromStartState(startState)
 
-    def _buildTransitionSystem(self):
+    def _buildTransitionSystem(self, labelsIsMap):
         return {
             'S': set(self.stateLabelsMap.keys()),
             'I': self.states_start,
             'Act': self.act,
             'to': self.to,
             'AP': self.ap,
-            'L': self.buildL(self.stateLabelsMap)
+            'L': self.stateLabelsMap if labelsIsMap else self.buildL(self.stateLabelsMap)
         }
 
     @staticmethod
@@ -185,50 +190,40 @@ class TransitionSystemFromProgramGraphConvertor:
         return L
 
     def _convert_fromStartState(self, startState):
-        statesLeftStack = [startState]
-        while len(statesLeftStack) > 0:
+        statesLeftStack = Stack([startState])
+        while not statesLeftStack.isEmpty():
             state = statesLeftStack.pop()
+            loc, eta = state
 
-            outputValues = self.logicCircuit.computeOutputValues(state)
-            newRegisterValues = self.logicCircuit.computeNewRegisterValues(state)
+            self.ap.add(loc)
+            self.stateLabelsMap[state] = self._convert_computeLabels(state)
+            self._convert_appendTransitions(state, statesLeftStack)
 
-            self.stateLabelsMap[state] = self._convert_computeLabels(state, outputValues)
-            self._convert_appendTransitions(state, newRegisterValues, statesLeftStack)
-
-    def _convert_computeLabels(self, state, outputValues):
+    def _convert_computeLabels(self, state):
+        loc, eta = state
         labels = set()
-        offset = 0
-        offset = self._convert_computeLabels_appendLabelsFromTuplePart(
-            labels, state,
-            offset=offset, symbol='r', count=self.logicCircuit.registersAmount
-        )
-        offset = self._convert_computeLabels_appendLabelsFromTuplePart(
-            labels, state,
-            offset=offset, symbol='x', count=self.logicCircuit.inputsAmount
-        )
-        self._convert_computeLabels_appendLabelsFromTuplePart(
-            labels, outputValues,
-            offset=0, symbol='y', count=len(outputValues)
-        )
+        for cond in self.conditionLabels:
+            if self.programGraph.eval(cond, eta):
+                labels.add(cond)
         return labels
 
-    @staticmethod
-    def _convert_computeLabels_appendLabelsFromTuplePart(labels, state, offset, symbol, count):
-        for i in range(0, count):
-            if state[i + offset]:
-                labels.add(f'{symbol}{i + 1}')
-        return count + offset
+    def _convert_appendTransitions(self, state, statesLeftStack):
+        loc, eta = state
+        for transition in self.programGraph.postTransitions(loc):
+            loc_from, cond, act, loc_to = transition
+            if self.programGraph.eval(cond, eta):
+                self._convert_addTransition(state, transition, statesLeftStack)
 
-    def _convert_appendTransitions(self, state, newRegisterValues, statesLeftStack):
-        for act in self.act:
-            followingState = newRegisterValues + act
-            self.to.add((state, act, followingState,))
-            if followingState not in self.stateLabelsMap:
-                statesLeftStack.append(followingState)
-                self.stateLabelsMap[followingState] = None
+    def _convert_addTransition(self, state, transition, statesLeftStack):
+        loc, eta = state
+        loc_from, cond, act, loc_to = transition
 
-    def initConvert(self):
-        self._initConvert()
+        eta_new = HashableDict(self.programGraph.effect(act, eta))
+        followingState = (loc_to, eta_new)
+        self.to.add((state, act, followingState,))
+        if followingState not in self.stateLabelsMap:
+            statesLeftStack.push(followingState)
+            self.stateLabelsMap[followingState] = None
 
     def _initConvert(self):
         self._initFromAllInputValues()
@@ -244,12 +239,12 @@ class TransitionSystemFromProgramGraphConvertor:
                 self.states_start.add((loc0, eta))
 
 
-def transition_system_from_program_graph(pg, vars, labels):
+def transition_system_from_program_graph(pg, vars, labels, labelsIsMap=False):
     return TransitionSystemFromProgramGraphConvertor(
         programGraph=ProgramGraph(pg),
         varDescriptors=vars,
         conditionLabels=labels
-    ).convert()
+    ).convert(labelsIsMap=labelsIsMap)
 
 
 def main():
