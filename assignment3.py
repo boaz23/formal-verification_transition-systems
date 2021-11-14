@@ -35,17 +35,17 @@ class Stack:
         return str(self.stack)
 
 
-class HashableDictBuilder(dict):
-    def build(self):
-        return frozenset(self.items())
+class HashableDict(dict):
+    def __hash__(self):
+        return hash(frozenset(self.items()))
+
+    def clone_shallow(self):
+        return HashableDict(self)
 
     def cloneAndAdd(self, key, value):
         clone = self.clone_shallow()
         clone[key] = value
         return clone
-
-    def clone_shallow(self):
-        return HashableDictBuilder(self)
 
 
 class AllStartValuesIterator:
@@ -53,7 +53,7 @@ class AllStartValuesIterator:
         self.descriptorsList = list(varDescriptors.items())
         self.stateStack: Stack = Stack()
 
-        self._pushVars(0, HashableDictBuilder())
+        self._pushVars(0, HashableDict())
 
     class VarState:
         def __init__(self, index, var, valuesIterator, value, acc):
@@ -109,8 +109,7 @@ class AllStartValuesIterator:
     def _buildNext(self):
         varState = self.stateStack.peek()
         return varState.acc\
-            .cloneAndAdd(varState.var, varState.value)\
-            .build()
+            .cloneAndAdd(varState.var, varState.value)
 
     def _nextVarState(self, varState):
         value = next(varState.valuesIterator)
@@ -129,7 +128,6 @@ class AllStartValuesIterator:
             )
 
 
-
 class AllStartValues:
     def __init__(self, varDescriptors):
         self.varDescriptors = varDescriptors
@@ -137,6 +135,16 @@ class AllStartValues:
     def __iter__(self):
         return AllStartValuesIterator(self.varDescriptors)
 
+
+class ProgramGraph:
+    def __init__(self, pgDict):
+        self.loc = pgDict['Loc']
+        self.loc0 = pgDict['Loc0']
+        self.act = pgDict['Act']
+        self.eval = pgDict['Eval']
+        self.effect = pgDict['Effect']
+        self.to = pgDict['to']
+        self.g0 = pgDict['g0']
 
 class TransitionSystemFromProgramGraphConvertor:
     def __init__(self, programGraph, varDescriptors, conditionLabels):
@@ -221,35 +229,29 @@ class TransitionSystemFromProgramGraphConvertor:
                 statesLeftStack.append(followingState)
                 self.stateLabelsMap[followingState] = None
 
+    def initConvert(self):
+        self._initConvert()
+
     def _initConvert(self):
         self._initFromAllInputValues()
-        self._initAp()
+        self.act = set(self.programGraph.act)
+        self.ap = set(self.conditionLabels)
 
     def _initFromAllInputValues(self):
-        self._registerAllZeros = (False,) * self.logicCircuit.registersAmount
-        AllStartValuesIterator(self.logicCircuit.inputsAmount, self._onInputValue).enumerate()
+        for eta in AllStartValues(self.varDescriptors):
+            if not self.programGraph.eval(self.programGraph.g0, eta):
+                continue
 
-    def _onInputValue(self, inputValue):
-        inputValue = tuple(inputValue)
-        self.states_start.add(self._registerAllZeros + inputValue)
-        self.act.add(inputValue)
-
-    def _initAp(self):
-        self._appendApSymbols(self.logicCircuit.registersAmount, 'r')
-        self._appendApSymbols(self.logicCircuit.inputsAmount, 'x')
-        self._appendApSymbols(self.logicCircuit.outputsAmount, 'y')
-
-    def _appendApSymbols(self, count, symbol):
-        for i in range(1, count + 1):
-            self.ap.add(f'{symbol}{i}')
+            for loc0 in self.programGraph.loc0:
+                self.states_start.add((loc0, eta))
 
 
 def transition_system_from_program_graph(pg, vars, labels):
     return TransitionSystemFromProgramGraphConvertor(
-        programGraph=pg,
+        programGraph=ProgramGraph(pg),
         varDescriptors=vars,
         conditionLabels=labels
-    )
+    ).convert()
 
 
 def main():
