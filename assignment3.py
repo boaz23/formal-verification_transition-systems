@@ -201,7 +201,7 @@ class TransitionSystemFromProgramGraphConvertor:
 
     def _convert_computeLabels(self, state):
         loc, eta = state
-        labels = set()
+        labels = {loc}
         for cond in self.conditionLabels:
             if self.programGraph.eval(cond, eta):
                 labels.add(cond)
@@ -239,7 +239,7 @@ class TransitionSystemFromProgramGraphConvertor:
                 self.states_start.add((loc0, eta))
 
 
-def transition_system_from_program_graph(pg, vars, labels, labelsIsMap=False):
+def transitionSystemFromProgramGraph(pg, vars, labels, labelsIsMap=False):
     return TransitionSystemFromProgramGraphConvertor(
         programGraph=ProgramGraph(pg),
         varDescriptors=vars,

@@ -3,7 +3,7 @@ from assignment3 import *
 from pprint import pprint
 
 def convert(pg, vars, labels, labelsIsMap=True, shouldSortComponents=True):
-    ts = transition_system_from_program_graph(pg, vars, labels, labelsIsMap)
+    ts = transitionSystemFromProgramGraph(pg, vars, labels, labelsIsMap)
     if shouldSortComponents:
         sortComponents(ts)
     return ts
@@ -82,32 +82,32 @@ def test_example():
         'Act': {'get_sprite', 'get_coke', 'coin', 'refill', 'ret_coin'},
         'I': [('start', (('ncoke', 2), ('nsprite', 2)))],
         'L': [
-            (('select', (('ncoke', 0), ('nsprite', 0))), ()),
-            (('select', (('ncoke', 0), ('nsprite', 1))), ('nsprite > 0',)),
-            (('select', (('ncoke', 0), ('nsprite', 2))), ('nsprite > 0',)),
-            (('select', (('ncoke', 1), ('nsprite', 0))), ('ncoke > 0',)),
+            (('select', (('ncoke', 0), ('nsprite', 0))), ('select',)),
+            (('select', (('ncoke', 0), ('nsprite', 1))), ('nsprite > 0', 'select')),
+            (('select', (('ncoke', 0), ('nsprite', 2))), ('nsprite > 0', 'select')),
+            (('select', (('ncoke', 1), ('nsprite', 0))), ('ncoke > 0', 'select')),
             (('select', (('ncoke', 1), ('nsprite', 1))),
-            ('ncoke > 0', 'nsprite > 0')),
+            ('ncoke > 0', 'nsprite > 0', 'select')),
             (('select', (('ncoke', 1), ('nsprite', 2))),
-            ('ncoke > 0', 'nsprite > 0')),
-            (('select', (('ncoke', 2), ('nsprite', 0))), ('ncoke > 0',)),
+            ('ncoke > 0', 'nsprite > 0', 'select')),
+            (('select', (('ncoke', 2), ('nsprite', 0))), ('ncoke > 0', 'select')),
             (('select', (('ncoke', 2), ('nsprite', 1))),
-            ('ncoke > 0', 'nsprite > 0')),
+            ('ncoke > 0', 'nsprite > 0', 'select')),
             (('select', (('ncoke', 2), ('nsprite', 2))),
-            ('ncoke > 0', 'nsprite > 0')),
-            (('start', (('ncoke', 0), ('nsprite', 0))), ()),
-            (('start', (('ncoke', 0), ('nsprite', 1))), ('nsprite > 0',)),
-            (('start', (('ncoke', 0), ('nsprite', 2))), ('nsprite > 0',)),
-            (('start', (('ncoke', 1), ('nsprite', 0))), ('ncoke > 0',)),
+            ('ncoke > 0', 'nsprite > 0', 'select')),
+            (('start', (('ncoke', 0), ('nsprite', 0))), ('start',)),
+            (('start', (('ncoke', 0), ('nsprite', 1))), ('nsprite > 0', 'start')),
+            (('start', (('ncoke', 0), ('nsprite', 2))), ('nsprite > 0', 'start')),
+            (('start', (('ncoke', 1), ('nsprite', 0))), ('ncoke > 0', 'start')),
             (('start', (('ncoke', 1), ('nsprite', 1))),
-            ('ncoke > 0', 'nsprite > 0')),
+            ('ncoke > 0', 'nsprite > 0', 'start')),
             (('start', (('ncoke', 1), ('nsprite', 2))),
-            ('ncoke > 0', 'nsprite > 0')),
-            (('start', (('ncoke', 2), ('nsprite', 0))), ('ncoke > 0',)),
+            ('ncoke > 0', 'nsprite > 0', 'start')),
+            (('start', (('ncoke', 2), ('nsprite', 0))), ('ncoke > 0', 'start')),
             (('start', (('ncoke', 2), ('nsprite', 1))),
-            ('ncoke > 0', 'nsprite > 0')),
+            ('ncoke > 0', 'nsprite > 0', 'start')),
             (('start', (('ncoke', 2), ('nsprite', 2))),
-            ('ncoke > 0', 'nsprite > 0'))
+            ('ncoke > 0', 'nsprite > 0', 'start'))
         ],
         'S': [
             ('select', (('ncoke', 0), ('nsprite', 0))),
