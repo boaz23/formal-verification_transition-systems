@@ -50,10 +50,10 @@ class HashableDictBuilder(dict):
 
 class AllStartValuesIterator:
     def __init__(self, varDescriptors):
-        self.varDescriptorsList = list(varDescriptors.items())
+        self.descriptorsList = list(varDescriptors.items())
         self.stateStack: Stack = Stack()
 
-        self.pushVars(0, HashableDictBuilder())
+        self._pushVars(0, HashableDictBuilder())
 
     class VarState:
         def __init__(self, index, var, valuesIterator, value, acc):
@@ -71,18 +71,18 @@ class AllStartValuesIterator:
                    f'  acc={self.acc}\n'\
                    f'}}'
 
-    def pushVars(self, index_start, acc_start):
+    def _pushVars(self, index_start, acc_start):
         acc = acc_start
-        for i in range(index_start, len(self.varDescriptorsList)):
-            self.pushVar(i, acc)
+        for i in range(index_start, len(self.descriptorsList)):
+            self._pushVar(i, acc)
 
             # We "pushed" but the stack is empty?
             # That must be because the var has no values.
             if self.stateStack.isEmpty():
                 break
 
-    def pushVar(self, i, acc):
-        var, possibleValues = self.varDescriptorsList[i]
+    def _pushVar(self, i, acc):
+        var, possibleValues = self.descriptorsList[i]
         valuesIterator = iter(possibleValues)
         try:
             value = next(valuesIterator)
@@ -95,24 +95,24 @@ class AllStartValuesIterator:
         if self.stateStack.isEmpty():
             raise StopIteration
 
-        retNext = self.buildNext()
+        retNext = self._buildNext()
         while self.stateStack.hasItems():
             varState = self.stateStack.pop()
             try:
-                self.nextVarState(varState)
+                self._nextVarState(varState)
                 break
             except StopIteration:
                 pass
 
         return retNext
 
-    def buildNext(self):
+    def _buildNext(self):
         varState = self.stateStack.peek()
         return varState.acc\
             .cloneAndAdd(varState.var, varState.value)\
             .build()
 
-    def nextVarState(self, varState):
+    def _nextVarState(self, varState):
         value = next(varState.valuesIterator)
         self.stateStack.push(self.VarState(
             index=varState.index,
@@ -122,8 +122,8 @@ class AllStartValuesIterator:
             acc=varState.acc,
         ))
 
-        if varState.index + 1 < len(self.varDescriptorsList):
-            self.pushVars(
+        if varState.index + 1 < len(self.descriptorsList):
+            self._pushVars(
                 varState.index + 1,
                 varState.acc.cloneAndAdd(varState.var, value)
             )
@@ -131,16 +131,18 @@ class AllStartValuesIterator:
 
 
 class AllStartValues:
-    def __init__(self, vars):
-        self.vars = vars
+    def __init__(self, varDescriptors):
+        self.varDescriptors = varDescriptors
 
     def __iter__(self):
-        return AllStartValuesIterator(self.vars)
+        return AllStartValuesIterator(self.varDescriptors)
 
 
-class TransitionSystemFromLogicCircuitConvertor:
-    def __init__(self, logicCircuit):
-        self.logicCircuit = logicCircuit
+class TransitionSystemFromProgramGraphConvertor:
+    def __init__(self, programGraph, varDescriptors, conditionLabels):
+        self.programGraph = programGraph
+        self.varDescriptors = varDescriptors
+        self.conditionLabels = conditionLabels
 
         self.stateLabelsMap = {}
         self.states_start = set()
@@ -148,14 +150,12 @@ class TransitionSystemFromLogicCircuitConvertor:
         self.to = set()
         self.ap = set()
 
-        self._initFromAllInputValues()
-        self._initAp()
-
     def convert(self):
-        self._convert_allStartStates()
+        self._initConvert()
+        self._convert_fromAllStartStates()
         return self._buildTransitionSystem()
 
-    def _convert_allStartStates(self):
+    def _convert_fromAllStartStates(self):
         for startState in self.states_start:
             if startState in self.stateLabelsMap:
                 continue
@@ -221,6 +221,10 @@ class TransitionSystemFromLogicCircuitConvertor:
                 statesLeftStack.append(followingState)
                 self.stateLabelsMap[followingState] = None
 
+    def _initConvert(self):
+        self._initFromAllInputValues()
+        self._initAp()
+
     def _initFromAllInputValues(self):
         self._registerAllZeros = (False,) * self.logicCircuit.registersAmount
         AllStartValuesIterator(self.logicCircuit.inputsAmount, self._onInputValue).enumerate()
@@ -238,6 +242,14 @@ class TransitionSystemFromLogicCircuitConvertor:
     def _appendApSymbols(self, count, symbol):
         for i in range(1, count + 1):
             self.ap.add(f'{symbol}{i}')
+
+
+def transition_system_from_program_graph(pg, vars, labels):
+    return TransitionSystemFromProgramGraphConvertor(
+        programGraph=pg,
+        varDescriptors=vars,
+        conditionLabels=labels
+    )
 
 
 def main():
