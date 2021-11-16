@@ -298,20 +298,19 @@ def test_petarson():
         labelsIsMap=True,
     )
 
-    print('digraph G {')
-    print('node [shape = point ]; qi')
-    print('node [shape = box]; ')
-    for s in ts['I']:
-        print(f'qi -> "{s[0]} {s[1]["y0"]},{s[1]["y1"]},{s[1]["s"]}";')
-
-    for (s, a, ss) in ts['to']:
-        print(f'"{s[0]} {s[1]["y0"]},{s[1]["y1"]},{s[1]["s"]}"', "->",
-              f'"{ss[0]} {ss[1]["y0"]},{ss[1]["y1"]},{ss[1]["s"]}"', f"[label={a}];")
-
-    print('}')
+    # print('digraph G {')
+    # print('node [shape = point ]; qi')
+    # print('node [shape = box]; ')
+    # for s in ts['I']:
+    #     print(f'qi -> "{s[0]} {s[1]["y0"]},{s[1]["y1"]},{s[1]["s"]}";')
+    #
+    # for (s, a, ss) in ts['to']:
+    #     print(f'"{s[0]} {s[1]["y0"]},{s[1]["y1"]},{s[1]["s"]}"', "->",
+    #           f'"{ss[0]} {ss[1]["y0"]},{ss[1]["y1"]},{ss[1]["s"]}"', f"[label={a}];")
+    #
+    # print('}')
 
     sortComponents(ts)
-    pprint(ts)
 
 
 def runTests():
