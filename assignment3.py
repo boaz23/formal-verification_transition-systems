@@ -3,31 +3,40 @@ class Stack:
         if iterable is None:
             iterable = []
 
-        self.stack = list(iterable)
+        self.list = list(iterable)
 
     def push(self, value):
-        self.stack.append(value)
+        self.list.append(value)
 
     def pop(self):
-        return self.stack.pop()
+        return self.list.pop()
+
+    def updateTop(self, value):
+        self.list[self.lastIndex()] = value
+
+    def clear(self):
+        self.list = []
 
     def peek(self):
-        return self.stack[len(self.stack) - 1]
+        return self.list[self.lastIndex()]
 
     def isEmpty(self):
-        return len(self.stack) == 0
+        return len(self.list) == 0
+
+    def lastIndex(self):
+        return len(self.list) - 1
 
     def clone_shallow(self):
-        return Stack(self.stack)
+        return Stack(self.list)
 
     def __len__(self):
-        return len(self.stack)
+        return len(self.list)
 
     def __iter__(self):
-        return iter(self.stack)
+        return iter(self.list)
 
     def __str__(self):
-        return str(self.stack)
+        return str(self.list)
 
 
 class HashableDict(dict):
@@ -37,54 +46,25 @@ class HashableDict(dict):
     def clone_shallow(self):
         return HashableDict(self)
 
-    def cloneAndAdd(self, key, value):
-        clone = self.clone_shallow()
-        clone[key] = value
-        return clone
-
 
 class AllStartValuesIterator:
     def __init__(self, varDescriptors):
         self.descriptorsList = list(varDescriptors.items())
         self.stateStack: Stack = Stack()
 
-        self._pushVars(0, HashableDict())
+        self.index = 0
+        self.acc = HashableDict()
+        self._push_allFromCurrent()
 
     class VarState:
-        def __init__(self, index, var, valuesIterator, value, acc):
-            self.index = index
+        def __init__(self, var, valuesIterator):
             self.var = var
             self.valuesIterator = valuesIterator
-            self.value = value
-            self.acc = acc
 
         def __str__(self):
-            return f'{{\n'\
-                   f'  var=\'{self.var}\'\n'\
-                   f'  value={self.value}\n'\
-                   f'  index={self.index}\n'\
-                   f'  acc={self.acc}\n'\
+            return f'{{'\
+                   f'  var=\'{self.var}\''\
                    f'}}'
-
-    def _pushVars(self, index_start, acc_start):
-        acc = acc_start
-        for i in range(index_start, len(self.descriptorsList)):
-            self._pushVar(i, acc)
-
-            # We "pushed" but the stack is empty?
-            # That must be because the var has no values.
-            if self.stateStack.isEmpty():
-                break
-
-    def _pushVar(self, i, acc):
-        var, possibleValues = self.descriptorsList[i]
-        valuesIterator = iter(possibleValues)
-        try:
-            value = next(valuesIterator)
-            self.stateStack.push(self.VarState(i, var, valuesIterator, value, acc.clone_shallow()))
-            acc[var] = value
-        except StopIteration:
-            self.stateStack = Stack()
 
     def __next__(self):
         if self.stateStack.isEmpty():
@@ -92,35 +72,60 @@ class AllStartValuesIterator:
 
         retNext = self._buildNext()
         while not self.stateStack.isEmpty():
-            varState = self.stateStack.pop()
+            varState = self._pop()
             try:
-                self._nextVarState(varState)
+                self._push_next(varState)
                 break
             except StopIteration:
+                # Iteration on the values of the current var is done.
+                # Move on the to the next value of the previous var.
                 pass
 
         return retNext
 
+    def _push_allFromCurrent(self):
+        while self.index < len(self.descriptorsList):
+            self._push_single_start()
+            self.index = self.index + 1
+
+            # We "pushed" but the stack is empty?
+            # That must be because the var has no values.
+            if self.stateStack.isEmpty():
+                break
+
+    def _push_single_start(self):
+        var, possibleValues = self.descriptorsList[self.index]
+        valuesIterator = iter(possibleValues)
+        try:
+            value = next(valuesIterator)
+            self.acc[var] = value
+            self.stateStack.push(self.VarState(var, valuesIterator))
+        except StopIteration:
+            self.stateStack.clear()
+
     def _buildNext(self):
-        varState = self.stateStack.peek()
-        return varState.acc\
-            .cloneAndAdd(varState.var, varState.value)
+        # make a copy of the current accumulator
+        # (because it is going to get mutated).
+        return HashableDict(self.acc)
 
-    def _nextVarState(self, varState):
+    def _pop(self):
+        self.index = self.index - 1
+        varState = self.stateStack.pop()
+        var, _ = self.descriptorsList[self.index]
+        del self.acc[var]
+        return varState
+
+    def _push_next(self, varState):
+        self._push_next_single(varState)
+        self._push_allFromCurrent()
+
+    def _push_next_single(self, varState):
         value = next(varState.valuesIterator)
-        self.stateStack.push(self.VarState(
-            index=varState.index,
-            var=varState.var,
-            valuesIterator=varState.valuesIterator,
-            value=value,
-            acc=varState.acc,
-        ))
+        var, _ = self.descriptorsList[self.index]
+        self.stateStack.push(self.VarState(var, varState.valuesIterator))
+        self.acc[var] = value
+        self.index = self.index + 1
 
-        if varState.index + 1 < len(self.descriptorsList):
-            self._pushVars(
-                varState.index + 1,
-                varState.acc.cloneAndAdd(varState.var, value)
-            )
 
 
 class AllStartValues:

@@ -37,6 +37,15 @@ def sortComponents(ts):
     ts['L'] = sortL(ts['L'])
     ts['I'] = sortStates(ts['I'])
 
+
+def test_allValuesIterator_1():
+    vars = {'ncoke': range(3), 'nsprite': ['a', 'b', 'c'], 'abc': [True, False]}
+    for values in AllStartValues(vars):
+        # print(values)
+        pass
+    pass
+
+
 def test_example():
     def evaluate(cond, eta):
         return {
@@ -314,6 +323,7 @@ def test_petarson():
 
 
 def runTests():
+    test_allValuesIterator_1()
     test_example()
     test_petarson()
 
