@@ -58,6 +58,8 @@ class AllStartValuesIterator:
 
     class VarState:
         def __init__(self, var, valuesIterator):
+            # Var is stored for debugging purposes only.
+            # Thus it is not used in the algorithm.
             self.var = var
             self.valuesIterator = valuesIterator
 
@@ -72,14 +74,14 @@ class AllStartValuesIterator:
 
         retNext = self._buildNext()
         while not self.stateStack.isEmpty():
-            varState = self._pop()
+            varState = self.stateStack.peek()
             try:
-                self._push_next(varState)
+                self._update_next(varState)
                 break
             except StopIteration:
                 # Iteration on the values of the current var is done.
                 # Move on the to the next value of the previous var.
-                pass
+                self._pop()
 
         return retNext
 
@@ -110,22 +112,20 @@ class AllStartValuesIterator:
 
     def _pop(self):
         self.index = self.index - 1
-        varState = self.stateStack.pop()
-        var, _ = self.descriptorsList[self.index]
-        del self.acc[var]
-        return varState
+        self.stateStack.pop()
 
-    def _push_next(self, varState):
-        self._push_next_single(varState)
+        # Not really need, but conceptually what should happen
+        # var, _ = self.descriptorsList[self.index]
+        # del self.acc[var]
+
+    def _update_next(self, varState):
+        self._update_valueOfCurrent(varState)
         self._push_allFromCurrent()
 
-    def _push_next_single(self, varState):
+    def _update_valueOfCurrent(self, varState):
         value = next(varState.valuesIterator)
-        var, _ = self.descriptorsList[self.index]
-        self.stateStack.push(self.VarState(var, varState.valuesIterator))
+        var, _ = self.descriptorsList[self.index - 1]
         self.acc[var] = value
-        self.index = self.index + 1
-
 
 
 class AllStartValues:
