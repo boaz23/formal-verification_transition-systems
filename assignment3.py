@@ -63,6 +63,9 @@ class AllStartValuesIterator:
             self.var = var
             self.valuesIterator = valuesIterator
 
+        def __repr__(self):
+            return f'VarState({self.var}, iter(...))'
+
         def __str__(self):
             return f'{{'\
                    f'  var=\'{self.var}\''\
