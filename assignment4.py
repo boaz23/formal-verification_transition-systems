@@ -96,10 +96,7 @@ class InterleaveProgramGraphsConvertor:
 
     def _buildTagMapFunc(self, map):
         def func(a, eta):
-            if a in map:
-                return map[a](a, eta)
-
-            raise Exception("Unknown param for map")
+            return map[a](a, eta)
 
         return func if not self.debug else map
 
@@ -216,15 +213,6 @@ class InterleaveTransitionSystemsConvertor:
         def L(s):
             return labelsMap[s]
         return L if not self.debug else labelsMap
-
-    def _buildTagMapFunc(self, map):
-        def func(a, eta):
-            if a in map:
-                return map[a](a, eta)
-
-            raise Exception("Unknown param for map")
-
-        return func if not self.debug else map
 
     def _convert_fromStartAll(self):
         for start in self.starts:
