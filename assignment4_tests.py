@@ -1,5 +1,5 @@
 from assignment4 import *
-from tests_core import sortedListFromIter
+from tests_core import *
 
 
 class HashableDict(dict):
@@ -62,8 +62,124 @@ def test_peterson():
     assert interleaved_peterson == expected
 
 
+def test_ts_1_independent():
+    l1 = {
+        's1': {'b'},
+        's2': {'a', 'b'},
+        's3': set(),
+    }
+    ts1 = {'S': {'s1', 's3', 's2'},
+           'Act': {'b', 'd', 'a'},
+           'to': {('s2', 'd', 's3'), ('s1', 'a', 's2'), ('s2', 'b', 's1')},
+           'I': {'s1'},
+           'AP': {'b', 'a'},
+           'L': lambda s: l1[s],
+    }
+
+    l2 = {
+        's4': {'a'},
+        's5': set(),
+    }
+    ts2 = {'S': {'s4', 's5'},
+           'Act': {'b', 'a', 'c'},
+           'to': {('s4', 'a', 's5'), ('s5', 'b', 's5'), ('s5', 'c', 's4')},
+           'I': {'s4'},
+           'AP': {'b', 'a'},
+           'L': lambda s: l2[s],
+    }
+
+    expected = {
+        'S': {('s1', 's4'), ('s1', 's5'), ('s3', 's4'), ('s2', 's4'), ('s3', 's5'), ('s2', 's5')},
+        'Act': {'a', 'b', 'c', 'd'},
+        'to': {
+            (('s1', 's4'), 'a', ('s1', 's5')),
+            (('s1', 's4'), 'a', ('s2', 's4')),
+            (('s1', 's5'), 'a', ('s2', 's5')),
+            (('s1', 's5'), 'b', ('s1', 's5')),
+            (('s1', 's5'), 'c', ('s1', 's4')),
+            (('s2', 's4'), 'a', ('s2', 's5')),
+            (('s2', 's4'), 'b', ('s1', 's4')),
+            (('s2', 's4'), 'd', ('s3', 's4')),
+            (('s2', 's5'), 'b', ('s1', 's5')),
+            (('s2', 's5'), 'b', ('s2', 's5')),
+            (('s2', 's5'), 'c', ('s2', 's4')),
+            (('s2', 's5'), 'd', ('s3', 's5')),
+            (('s3', 's4'), 'a', ('s3', 's5')),
+            (('s3', 's5'), 'b', ('s3', 's5')),
+            (('s3', 's5'), 'c', ('s3', 's4')),
+        },
+        'I': {('s1', 's4')}, 'AP': {'b', 'a'},
+        'L': {
+            ('s1', 's4'): l1['s1'] | l2['s4'],
+            ('s1', 's5'): l1['s1'] | l2['s5'],
+            ('s3', 's4'): l1['s3'] | l2['s4'],
+            ('s2', 's4'): l1['s2'] | l2['s4'],
+            ('s3', 's5'): l1['s3'] | l2['s5'],
+            ('s2', 's5'): l1['s2'] | l2['s5'],
+        },
+    }
+    # expected = debuggableTs(expected, convertLabelsFuncToMap=False)
+
+    interleaved_ts = interleave_transition_systems(ts1, ts2, set())
+    convertTsLabelsFuncToMap(interleaved_ts)
+    # interleaved_ts = debuggableTs(interleaved_ts)
+
+    assert interleaved_ts == expected
+
+
+def test_ts_1_handshake_1():
+    l1 = {
+        's1': {'b'},
+        's2': {'a', 'b'},
+        's3': set(),
+    }
+    ts1 = {'S': {'s1', 's3', 's2'},
+           'Act': {'b', 'd', 'a'},
+           'to': {('s2', 'd', 's3'), ('s1', 'a', 's2'), ('s2', 'b', 's1')},
+           'I': {'s1'},
+           'AP': {'b', 'a'},
+           'L': lambda s: l1[s],
+    }
+
+    l2 = {
+        's4': {'a'},
+        's5': set(),
+    }
+    ts2 = {'S': {'s4', 's5'},
+           'Act': {'b', 'a', 'c'},
+           'to': {('s4', 'a', 's5'), ('s5', 'b', 's5'), ('s5', 'c', 's4')},
+           'I': {'s4'},
+           'AP': {'b', 'a'},
+           'L': lambda s: l2[s],
+    }
+
+    expected = {
+        'S': {('s1', 's4'), ('s1', 's5'), ('s3', 's4'), ('s2', 's4'), ('s3', 's5'), ('s2', 's5')},
+        'Act': {'a', 'b', 'c', 'd'},
+        'to': {(('s2', 's5'), 'c', ('s2', 's4')), (('s1', 's5'), 'c', ('s1', 's4')), (('s1', 's4'), 'a', ('s2', 's5')), (('s2', 's4'), 'd', ('s3', 's4')), (('s2', 's5'), 'd', ('s3', 's5')), (('s3', 's5'), 'c', ('s3', 's4')), (('s2', 's5'), 'b', ('s1', 's5'))},
+        'I': {('s1', 's4')}, 'AP': {'b', 'a'},
+        'L': {
+            ('s1', 's4'): l1['s1'] | l2['s4'],
+            ('s1', 's5'): l1['s1'] | l2['s5'],
+            ('s3', 's4'): l1['s3'] | l2['s4'],
+            ('s2', 's4'): l1['s2'] | l2['s4'],
+            ('s3', 's5'): l1['s3'] | l2['s5'],
+            ('s2', 's5'): l1['s2'] | l2['s5'],
+        },
+    }
+    # expected = debuggableTs(expected, convertLabelsFuncToMap=False)
+
+    interleaved_ts = interleave_transition_systems(ts1, ts2, {'a', 'b',})
+    convertTsLabelsFuncToMap(interleaved_ts)
+    # interleaved_ts = debuggableTs(interleaved_ts)
+
+    assert interleaved_ts == expected
+
+
 def runTests():
     test_peterson()
+    test_ts_1_independent()
+    test_ts_1_handshake_1()
 
 
 if __name__ == '__main__':

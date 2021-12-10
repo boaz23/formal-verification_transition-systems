@@ -15,6 +15,21 @@ def sortedTupleFromDict(dict):
     return tuple(sortedListFromDict(dict))
 
 
+def debuggableTs(ts, convertLabelsFuncToMap=True):
+    ts = copy.deepcopy(ts)
+    if convertLabelsFuncToMap:
+        convertTsLabelsFuncToMap(ts)
+    ts['S'] = sortedListFromIter(ts['S'])
+    ts['I'] = sortedListFromIter(ts['I'])
+    ts['Act'] = sortedListFromIter(ts['Act'])
+    ts['to'] = sortedListFromIter(ts['to'])
+    ts['AP'] = sortedListFromIter(ts['AP'])
+    for s in ts['S']:
+        ts['L'][s] = sortedListFromIter(ts['L'][s])
+    ts['L'] = sortedTupleFromDict(ts['L'])
+    return ts
+
+
 def printableTs(ts, convertLabelsFuncToMap=True):
     ts = copy.deepcopy(ts)
     if convertLabelsFuncToMap:
