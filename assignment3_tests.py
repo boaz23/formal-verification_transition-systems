@@ -1,4 +1,4 @@
-from ts_tests_core import *
+from tests_core import *
 from assignment3 import *
 from pprint import pprint
 

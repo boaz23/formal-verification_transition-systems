@@ -1,4 +1,4 @@
-from ts_tests_core import *
+from tests_core import *
 import assignment2
 
 
