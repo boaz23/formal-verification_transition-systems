@@ -355,14 +355,14 @@ class InterleaveTransitionSystemsConvertor:
 
     def _traverse_handshake(self, state):
         for act in self.h:
-            transitionsList = self._mapStateTs(
-                lambda s, ts: ts.postTransitions(s, act),
-                state
-            )
-            self._traverse_handshake_transitions(state, act, transitionsList)
+            self._traverse_handshake_transitions(state, act)
 
-    def _traverse_handshake_transitions(self, state, act, transitionsList):
-        for syncedTransitions in Product(transitionsList):
+    def _traverse_handshake_transitions(self, state, act):
+        transitionsLists = self._mapStateTs(
+            lambda s, ts: ts.postTransitions(s, act),
+            state
+        )
+        for syncedTransitions in Product(transitionsLists):
             self._addTransition_handshake(state, act, syncedTransitions)
 
     def _addTransition_handshake(self, state, act, syncedTransitions):
