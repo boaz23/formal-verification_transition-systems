@@ -1,4 +1,19 @@
-from typing import Set
+from typing import Set, List
+
+
+def map_unpack(f, iter):
+    result = []
+    for value in iter:
+        result.append(f(*value))
+    return result
+
+
+def tuple_set(t, i, v):
+    l = list(t)
+    l[i] = v
+    t = tuple(l)
+    return t
+
 
 class Stack:
     def __init__(self, iterable=None):
@@ -23,7 +38,7 @@ class Stack:
         return self.list[self.lastIndex()]
 
     def isEmpty(self):
-        return len(self.list) == 0
+        return not self.list
 
     def lastIndex(self):
         return len(self.list) - 1
@@ -39,6 +54,91 @@ class Stack:
 
     def __str__(self):
         return str(self.list)
+
+
+class ProductIterator:
+    def __init__(self, iterables):
+        self.descriptorsList = iterables
+        self.stateStack: Stack = Stack()
+
+        self.index = 0
+        self.acc = [None] * len(iterables)
+        self._push_allFromCurrent()
+
+    class IterState:
+        def __init__(self, index, iterator):
+            self.index = index
+            self.iterator = iterator
+
+        def __repr__(self):
+            return f'IterState({self.index}, iter(...))'
+
+        def __str__(self):
+            return f'{{'\
+                   f'  index=\'{self.index}\''\
+                   f'}}'
+
+    def __next__(self):
+        if self.stateStack.isEmpty():
+            raise StopIteration
+
+        retNext = self._buildNext()
+        while not self.stateStack.isEmpty():
+            iterState = self.stateStack.peek()
+            try:
+                self._update_next(iterState)
+                break
+            except StopIteration:
+                # Iteration on the values of the current var is done.
+                # Move on the to the next value of the previous var.
+                self._pop()
+
+        return retNext
+
+    def _push_allFromCurrent(self):
+        while self.index < len(self.descriptorsList):
+            self._push_single_start()
+            self.index = self.index + 1
+
+            # We "pushed" but the stack is empty?
+            # That must be because the var has no values.
+            if self.stateStack.isEmpty():
+                break
+
+    def _push_single_start(self):
+        iterable = self.descriptorsList[self.index]
+        iterator = iter(iterable)
+        try:
+            value = next(iterator)
+            self.acc[self.index] = value
+            self.stateStack.push(self.IterState(self.index, iterator))
+        except StopIteration:
+            self.stateStack.clear()
+
+    def _buildNext(self):
+        # make a copy of the current accumulator
+        # (because it is going to get mutated).
+        return list(self.acc)
+
+    def _pop(self):
+        self.index = self.index - 1
+        self.stateStack.pop()
+
+    def _update_next(self, iterState):
+        self._update_valueOfCurrent(iterState)
+        self._push_allFromCurrent()
+
+    def _update_valueOfCurrent(self, iterState):
+        value = next(iterState.iterator)
+        self.acc[self.index - 1] = value
+
+
+class Product:
+    def __init__(self, iterables):
+        self.iterables = list(iterables)
+
+    def __iter__(self):
+        return ProductIterator(self.iterables)
 
 
 class ProgramGraph:
@@ -142,10 +242,7 @@ class InterleaveProgramGraphsConvertor:
             self.leftStack.push(followingLoc)
 
     def _followingOf(self, loc, locIndex, loc_to):
-        locList = list(loc)
-        locList[locIndex] = loc_to
-        followingLoc = tuple(locList)
-        return followingLoc
+        return tuple_set(loc, locIndex, loc_to)
 
     def _initConvert(self):
         self._initStarts()
@@ -177,11 +274,9 @@ class TransitionSystem:
 
 
 class InterleaveTransitionSystemsConvertor:
-    def __init__(self, ts1: TransitionSystem, ts2: TransitionSystem, h: Set[str]):
-        self.ts1: TransitionSystem = ts1
-        self.ts2: TransitionSystem = ts2
+    def __init__(self, tss: List[TransitionSystem], h: Set[str]):
+        self.tss = tss
         self.h = h
-        self.tss = [ts1, ts2]
 
         self.labelsMap = {}
         self.starts = set()
@@ -229,8 +324,8 @@ class InterleaveTransitionSystemsConvertor:
             self._traverse(state)
 
     def _computeLabels(self, state):
-        s1, s2 = state
-        return self.ts1.l(s1) | self.ts2.l(s2)
+        labelSets = self._mapStateTs(lambda s, ts: ts.l(s), state)
+        return set.union(*labelSets)
 
     def _traverse(self, state):
         self._traverse_independent(state)
@@ -256,25 +351,26 @@ class InterleaveTransitionSystemsConvertor:
         self._addTransition_core(state, act, followingState)
 
     def _followingOfSingle(self, state, index, state_to):
-        locList = list(state)
-        locList[index] = state_to
-        followingLoc = tuple(locList)
-        return followingLoc
+        return tuple_set(state, index, state_to)
 
     def _traverse_handshake(self, state):
-        s1, s2 = state
         for act in self.h:
-            transitions1 = self.ts1.postTransitions(s1, act)
-            transitions2 = self.ts2.postTransitions(s2, act)
-            if transitions1 and transitions2:
-                self._addTransition_handshake(state, act, transitions1, transitions2)
+            transitionsList = self._mapStateTs(
+                lambda s, ts: ts.postTransitions(s, act),
+                state
+            )
+            self._traverse_handshake_transitions(state, act, transitionsList)
 
-    def _addTransition_handshake(self, state, act, transitions1, transitions2):
-        for trans1 in transitions1:
-            for trans2 in transitions2:
-                s1_from, _, s1_to = trans1
-                s2_from, _, s2_to = trans2
-                self._addTransition_core(state, act, (s1_to, s2_to,))
+    def _traverse_handshake_transitions(self, state, act, transitionsList):
+        for syncedTransitions in Product(transitionsList):
+            self._addTransition_handshake(state, act, syncedTransitions)
+
+    def _addTransition_handshake(self, state, act, syncedTransitions):
+        state_to = tuple(map_unpack(
+            lambda s_from, _, s_to: s_to,
+            syncedTransitions
+        ))
+        self._addTransition_core(state, act, state_to)
 
     def _addTransition_core(self, state, act, followingState):
         self.to.add((state, act, followingState,))
@@ -284,14 +380,17 @@ class InterleaveTransitionSystemsConvertor:
 
     def _initConvert(self):
         self._initStarts()
-        self.act = self.ts1.act | self.ts2.act
-        self.ap = self.ts1.ap | self.ts1.ap
+        self.act = set.union(*map(lambda ts: ts.act, self.tss))
+        self.ap = set.union(*map(lambda ts: ts.ap, self.tss))
+
+    def _mapStateTs(self, f, state):
+        return map_unpack(f, zip(state, self.tss))
 
     def _initStarts(self):
-        for s1 in self.ts1.i:
-            for s2 in self.ts2.i:
-                self.starts.add((s1, s2,))
-
+        starts = Product(map(lambda ts: ts.i, self.tss))
+        starts = map(lambda start: tuple(start), starts)
+        starts = list(starts)
+        self.starts = starts
 
 def interleave_program_graphs(pg1, pg2, debug=False):
     return InterleaveProgramGraphsConvertor(
@@ -302,8 +401,10 @@ def interleave_program_graphs(pg1, pg2, debug=False):
 
 def interleave_transition_systems(ts1, ts2, h, debug=False):
     return InterleaveTransitionSystemsConvertor(
-        ts1=TransitionSystem(**ts1),
-        ts2=TransitionSystem(**ts2),
+        tss=[
+            TransitionSystem(**ts1),
+            TransitionSystem(**ts2),
+        ],
         h=h,
     ).convert(debug)
 
