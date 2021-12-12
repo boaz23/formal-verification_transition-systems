@@ -256,13 +256,13 @@ class InterleaveProgramGraphsConvertor:
 
 
 class TransitionSystem:
-    def __init__(self, S, Act, to, I, AP, L):
-        self.s = S
-        self.act = Act
+    def __init__(self, s, act, to, i, ap, l):
+        self.s = s
+        self.act = act
         self.to = to
-        self.i = I
-        self.ap = AP
-        self.l = L
+        self.i = i
+        self.ap = ap
+        self.l = l
 
     def postTransitions(self, state, act=None):
         result = set()
